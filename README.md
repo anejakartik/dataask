@@ -6,7 +6,7 @@
 **Status:** scaffold · last shipped 2026-06-15
 **Built by:** [Kartik Aneja](https://kartikaneja.com) — AI/ML Platform Engineer
 
-[![CI](https://github.com/anejakartik/evalstack/actions/workflows/ci.yml/badge.svg)](https://github.com/anejakartik/dataask/actions/workflows/ci.yml)
+[![CI](https://github.com/anejakartik/dataask/actions/workflows/ci.yml/badge.svg)](https://github.com/anejakartik/dataask/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 ---
