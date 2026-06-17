@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>dataask — natural-language analytics</title>
+    <style>
+      :root {
+        --bg: #fafafa;
+        --surface: #ffffff;
+        --border: #e4e4e7;
+        --ink: #18181b;
+        --muted: #71717a;
+        --accent: #4338ca;
+        --accent-soft: #eef2ff;
+        --danger: #b91c1c;
+        --danger-soft: #fef2f2;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+      header { border-bottom: 1px solid var(--border); background: var(--surface); }
+      header .wrap { max-width: 920px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: baseline; justify-content: space-between; }
+      header h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+      header .tag { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: #f4f4f5; color: var(--muted); padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+      header a { font-size: 13px; color: var(--muted); text-decoration: none; }
+      header a:hover { color: var(--ink); }
+      main { max-width: 920px; margin: 0 auto; padding: 32px 24px 80px; }
+      .lead { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+      form { display: flex; gap: 8px; margin-bottom: 12px; }
+      input[type="text"] { flex: 1; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 15px; }
+      input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+      button { padding: 12px 18px; border: 0; border-radius: 8px; background: var(--accent); color: white; font-weight: 500; cursor: pointer; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 32px; }
+      .examples button { background: var(--surface); color: var(--muted); border: 1px solid var(--border); padding: 6px 10px; font-size: 12px; border-radius: 999px; font-weight: 400; }
+      .examples button:hover { color: var(--ink); border-color: #a1a1aa; }
+      .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+      .panel header { padding: 10px 16px; background: #fafafa; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+      .panel .body { padding: 14px 16px; }
+      pre.sql { margin: 0; padding: 14px 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; background: #fafafa; overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+      th { background: #fafafa; font-weight: 500; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+      tbody tr:last-child td { border-bottom: 0; }
+      .meta { color: var(--muted); font-size: 12px; padding: 10px 16px; border-top: 1px solid var(--border); background: #fafafa; }
+      .error { background: var(--danger-soft); border: 1px solid #fecaca; color: var(--danger); border-radius: 8px; padding: 14px 16px; font-size: 14px; }
+      .error pre { margin: 8px 0 0; font-size: 12px; }
+      .schema { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+      .schema-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
+      .schema-card .name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+      .schema-card ul { list-style: none; padding: 0; margin: 0; font-size: 12px; color: var(--muted); }
+      .schema-card li { padding: 1px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .schema-card li .ty { color: #a1a1aa; margin-left: 6px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <div>
+          <strong>dataask</strong>
+          <span class="tag">alpha</span>
+        </div>
+        <a href="https://github.com/anejakartik/dataask" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </div>
+    </header>
+    <main>
+      <p class="lead">
+        Ask a question about the demo SaaS dataset. dataask generates the SQL,
+        runs it against an in-memory DuckDB, and shows you the result.
+      </p>
+
+      <form id="ask-form">
+        <input id="question" type="text" placeholder="What was our MRR by plan last month?" autocomplete="off" required />
+        <button type="submit" id="ask-btn">Ask</button>
+      </form>
+
+      <div class="examples" id="examples">
+        <button data-q="What was our MRR by plan last month?">MRR by plan last month</button>
+        <button data-q="How many customers signed up in May 2026?">Signups in May 2026</button>
+        <button data-q="Top 5 countries by total paid order amount">Top countries by paid orders</button>
+        <button data-q="Weekly active users in June 2026">Weekly active users</button>
+        <button data-q="Which plan has the highest churn rate?">Highest churn rate plan</button>
+      </div>
+
+      <div id="result"></div>
+
+      <div class="panel" id="schema-panel">
+        <header>Demo dataset schema</header>
+        <div class="body schema" id="schema-cards"></div>
+      </div>
+    </main>
+
+    <script>
+      const $result = document.getElementById('result');
+      const $form = document.getElementById('ask-form');
+      const $question = document.getElementById('question');
+      const $btn = document.getElementById('ask-btn');
+
+      document.querySelectorAll('#examples button').forEach((b) => {
+        b.addEventListener('click', () => {
+          $question.value = b.dataset.q;
+          $form.requestSubmit();
+        });
+      });
+
+      $form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const q = $question.value.trim();
+        if (!q) return;
+        $btn.disabled = true;
+        $btn.textContent = 'Thinking…';
+        $result.innerHTML = '';
+        try {
+          const res = await fetch('/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: q }),
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            renderError(res.status, text);
+            return;
+          }
+          const data = await res.json();
+          renderResult(data);
+        } catch (err) {
+          renderError(0, String(err));
+        } finally {
+          $btn.disabled = false;
+          $btn.textContent = 'Ask';
+        }
+      });
+
+      function renderResult(data) {
+        const cols = data.columns ?? [];
+        const rows = data.rows ?? [];
+        const warns = (data.warnings ?? []).map((w) => `<div class="meta">${escapeHtml(w)}</div>`).join('');
+
+        let table = '';
+        if (cols.length && rows.length) {
+          const header = cols.map((c) => `<th>${escapeHtml(c)}</th>`).join('');
+          const body = rows.map((r) => `<tr>${cols.map((c) => `<td>${formatCell(r[c])}</td>`).join('')}</tr>`).join('');
+          table = `<table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>`;
+        } else {
+          table = `<div class="meta">No rows returned.</div>`;
+        }
+
+        $result.innerHTML = `
+          <div class="panel">
+            <header>Generated SQL</header>
+            <pre class="sql">${escapeHtml(data.sql)}</pre>
+          </div>
+          <div class="panel">
+            <header>Result · ${rows.length} row${rows.length === 1 ? '' : 's'}</header>
+            ${table}
+            ${warns}
+          </div>
+        `;
+      }
+
+      function renderError(status, detail) {
+        let body = detail;
+        try {
+          const parsed = JSON.parse(detail);
+          body = parsed.detail ?? detail;
+        } catch (_) { /* not json */ }
+        $result.innerHTML = `
+          <div class="error">
+            <strong>Couldn't answer that.</strong>
+            <pre>${escapeHtml(typeof body === 'string' ? body : JSON.stringify(body, null, 2))}</pre>
+            <div style="font-size:12px;margin-top:8px;color:#7f1d1d">
+              HTTP ${status}. If this says "OPENAI_API_KEY is not set", set the env var and restart the server.
+            </div>
+          </div>
+        `;
+      }
+
+      function formatCell(v) {
+        if (v === null || v === undefined) return '<span style="color:#a1a1aa">∅</span>';
+        if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
+        return escapeHtml(String(v));
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
+      }
+
+      // Load schema on first paint.
+      fetch('/schema').then((r) => r.json()).then((tables) => {
+        const cards = tables.map((t) => `
+          <div class="schema-card">
+            <div class="name">${escapeHtml(t.name)}</div>
+            <ul>${t.columns.map((c) => `<li>${escapeHtml(c.name)}<span class="ty">${escapeHtml(c.type)}</span></li>`).join('')}</ul>
+          </div>
+        `).join('');
+        document.getElementById('schema-cards').innerHTML = cards;
+      }).catch(() => { /* schema load is non-critical */ });
+    </script>
+  </body>
+</html>

@@ -3,7 +3,7 @@
 > Natural-language analytics for founders + PMs. Connect your warehouse. Ask "what was our DAU last week by region?". Get the answer + SQL in 5 seconds.
 
 **Live demo:** [dataask.kartikaneja.com](https://dataask.kartikaneja.com) *(coming soon)*
-**Status:** scaffold · last shipped 2026-06-15
+**Status:** alpha · last shipped 2026-06-17
 **Built by:** [Kartik Aneja](https://kartikaneja.com) — AI/ML Platform Engineer
 
 [![CI](https://github.com/anejakartik/dataask/actions/workflows/ci.yml/badge.svg)](https://github.com/anejakartik/dataask/actions/workflows/ci.yml)
@@ -21,41 +21,40 @@ See [PRODUCT.md](./PRODUCT.md) for the full writeup. TL;DR:
 - **Pain:** Hex/Outerbase cost money; OSS text-to-SQL hallucinates non-existent columns; Slacking the data team is slow
 - **Why now:** NL→SQL is hot but accuracy is the blocker — an eval-driven approach wins
 
-## What works today
+## What works today (alpha MVP)
 
-- *(scaffolding — first working NL→SQL endpoint lands this week)*
-- Repo + doc set
-- FastAPI server skeleton with intended `/ask` endpoint
-- DuckDB connection layer
-- Read-only SQL enforcement helper (regex-based block on DDL/DML)
-- CI workflow
+- **`POST /ask`** — schema introspection → OpenAI `gpt-4o-mini` → sqlglot AST safety check → DuckDB execute → rows back
+- **Read-only enforcement** — sqlglot AST rejects DDL/DML, multi-statement queries, PRAGMA/ATTACH/COPY
+- **Synthetic SaaS demo dataset** — `customers` / `subscriptions` / `orders` / `events` seeded on startup (deterministic for reproducible demos)
+- **Minimal chat UI** — single-page HTML at `/` with question box, generated-SQL display, result table, schema panel
+- **`GET /schema`** — live table+column listing for prompt debugging and UI render
+- **CORS** — configurable via `DATAASK_CORS_ORIGINS`
 
-## Try it (when shipped)
+## Try it (60 seconds, local)
 
 ```bash
 git clone https://github.com/anejakartik/dataask.git
 cd dataask
-docker compose up -d
-# Connect to public NYC Taxi dataset by default
-open http://localhost:3000
+echo "OPENAI_API_KEY=sk-..." > .env
+docker compose up --build
+open http://localhost:8000  # ask "What was our MRR by plan last month?"
 ```
 
-```python
-# Or use the SDK
-import dataask
-client = dataask.Client(endpoint="http://localhost:8000")
-result = client.ask("What were the top 5 pickup zones last December?")
-print(result.sql)
-print(result.rows)
-```
+Sample questions the demo dataset can answer:
+
+- "What was our MRR by plan last month?"
+- "How many customers signed up in May 2026?"
+- "Top 5 countries by total paid order amount"
+- "Weekly active users in June 2026"
+- "Which plan has the highest churn rate?"
 
 ## Architecture
 
-See [docs/architecture.md](./docs/architecture.md). Stack: Python FastAPI + DuckDB + OpenAI + Next.js, deployed on Fly.io + Vercel. Plans to consume `evalstack` for accuracy regression CI.
+See [docs/architecture.md](./docs/architecture.md). Stack: Python FastAPI + DuckDB + OpenAI. Plans to consume `evalstack` for accuracy regression CI.
 
 ## What's next
 
-See [ROADMAP.md](./ROADMAP.md). Top items: NL→SQL with schema awareness, SQL safety layer, chat UI, eval suite.
+See [ROADMAP.md](./ROADMAP.md). Top items: EXPLAIN cost preview, proper Next.js chat UI with conversation history, public deployment, 50-case eval suite via `evalstack`.
 
 ## Contributing
 
