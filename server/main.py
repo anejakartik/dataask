@@ -17,7 +17,13 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from db import execute_select, init_db, introspect_schema, render_schema_for_prompt
+from db import (
+    execute_select,
+    explain_query,
+    init_db,
+    introspect_schema,
+    render_schema_for_prompt,
+)
 from llm import LLMUnavailable, generate_sql
 from safety import is_readonly
 
@@ -81,6 +87,12 @@ class AskRequest(BaseModel):
     connection_id: str = "default"
 
 
+class CostEstimateOut(BaseModel):
+    estimated_rows: int | None
+    operators: list[str]
+    plan: str
+
+
 class AskResponse(BaseModel):
     question: str
     sql: str
@@ -88,6 +100,7 @@ class AskResponse(BaseModel):
     rows: list[dict[str, Any]]
     row_count: int
     truncated: bool
+    cost_estimate: CostEstimateOut | None = None
     warnings: list[str] = []
 
 
@@ -114,6 +127,24 @@ def ask(req: AskRequest) -> AskResponse:
             f"Generated SQL was unsafe and refused. SQL was: {sql!r}. Reason: {reason}",
         )
 
+    warnings: list[str] = []
+
+    cost: CostEstimateOut | None = None
+    try:
+        estimate = explain_query(sql)
+        cost = CostEstimateOut(
+            estimated_rows=estimate.estimated_rows,
+            operators=list(estimate.operators),
+            plan=estimate.plan,
+        )
+        # Friendly warning if the planner thinks this is going to be huge.
+        if estimate.estimated_rows is not None and estimate.estimated_rows > 100_000:
+            warnings.append(
+                f"Planner estimates ~{estimate.estimated_rows:,} rows; the result is capped at 200 for display"
+            )
+    except Exception as exc:  # noqa: BLE001 — EXPLAIN failure shouldn't block /ask
+        warnings.append(f"EXPLAIN preview failed (non-fatal): {exc}")
+
     try:
         result = execute_select(sql)
     except Exception as exc:
@@ -122,7 +153,6 @@ def ask(req: AskRequest) -> AskResponse:
             f"SQL parsed and was read-only, but execution failed. SQL: {sql!r}. Error: {exc}",
         )
 
-    warnings: list[str] = []
     if result.truncated:
         warnings.append(f"Result truncated to {result.row_count} rows")
 
@@ -133,6 +163,7 @@ def ask(req: AskRequest) -> AskResponse:
         rows=result.rows,
         row_count=result.row_count,
         truncated=result.truncated,
+        cost_estimate=cost,
         warnings=warnings,
     )
 
@@ -142,6 +173,27 @@ def validate_sql(sql: str) -> dict[str, Any]:
     """Run the safety layer against arbitrary SQL. Useful for testing."""
     safe, reason = is_readonly(sql)
     return {"safe": safe, "reason": reason}
+
+
+class ExplainRequest(BaseModel):
+    sql: str
+
+
+@app.post("/explain", response_model=CostEstimateOut)
+def explain(req: ExplainRequest) -> CostEstimateOut:
+    """Run the safety-gated EXPLAIN against arbitrary SQL.
+
+    Lets clients preview cost without hitting the LLM at all.
+    """
+    safe, reason = is_readonly(req.sql)
+    if not safe:
+        raise HTTPException(400, f"unsafe SQL: {reason}")
+    estimate = explain_query(req.sql)
+    return CostEstimateOut(
+        estimated_rows=estimate.estimated_rows,
+        operators=list(estimate.operators),
+        plan=estimate.plan,
+    )
 
 
 # --- Static demo UI --------------------------------------------------------

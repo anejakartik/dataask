@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -80,11 +81,51 @@ def render_schema_for_prompt(tables: list[TableSpec]) -> str:
 
 
 @dataclass(frozen=True)
+class CostEstimate:
+    """Rough pre-execute cardinality + operator breakdown from DuckDB EXPLAIN."""
+    estimated_rows: int | None
+    operators: tuple[str, ...]
+    plan: str
+
+
+@dataclass(frozen=True)
 class QueryResult:
     columns: tuple[str, ...]
     rows: list[dict[str, Any]]
     row_count: int
     truncated: bool
+
+
+_ROW_ESTIMATE = re.compile(r"~(\d[\d,]*)\s+Rows?")
+_OPERATOR = re.compile(r"^\s*│\s*(?P<op>[A-Z][A-Z_]{2,})\s*│\s*$", re.MULTILINE)
+
+
+def explain_query(sql: str) -> CostEstimate:
+    """Run DuckDB EXPLAIN and pull a quick cost estimate.
+
+    Cheap (sub-millisecond on the schemas we ship); the planner runs but the
+    query doesn't execute. Returns None for `estimated_rows` if DuckDB's
+    output didn't include a cardinality (e.g. constant expressions).
+    """
+    con = get_conn()
+    plan_rows = con.execute(f"EXPLAIN {sql}").fetchall()
+    plan = "\n".join(r[1] for r in plan_rows) if plan_rows else ""
+
+    operators: list[str] = _OPERATOR.findall(plan)
+
+    estimated: int | None = None
+    m = _ROW_ESTIMATE.search(plan)
+    if m:
+        try:
+            estimated = int(m.group(1).replace(",", ""))
+        except ValueError:
+            estimated = None
+
+    return CostEstimate(
+        estimated_rows=estimated,
+        operators=tuple(operators),
+        plan=plan,
+    )
 
 
 def execute_select(sql: str, row_limit: int = 200) -> QueryResult:

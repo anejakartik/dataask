@@ -145,11 +145,36 @@
           table = `<div class="meta">No rows returned.</div>`;
         }
 
+        const cost = data.cost_estimate;
+        let costPanel = '';
+        if (cost) {
+          const estLine = cost.estimated_rows != null
+            ? `Estimated ~${Number(cost.estimated_rows).toLocaleString()} rows`
+            : 'No row estimate available';
+          const opSummary = (cost.operators || []).length
+            ? `${cost.operators.length} operators: ${cost.operators.slice(0, 5).join(' → ')}${cost.operators.length > 5 ? '…' : ''}`
+            : '';
+          costPanel = `
+            <div class="panel">
+              <header>Cost preview</header>
+              <div class="body" style="font-size:13px; color:#27272a;">
+                <div><strong>${escapeHtml(estLine)}</strong></div>
+                ${opSummary ? `<div style="color:#71717a; margin-top:4px;">${escapeHtml(opSummary)}</div>` : ''}
+                <details style="margin-top:8px;">
+                  <summary style="cursor:pointer; color:#71717a;">EXPLAIN plan</summary>
+                  <pre style="margin-top:8px; font-size:11px; background:#fafafa; padding:10px 12px; border-radius:6px; overflow-x:auto;">${escapeHtml(cost.plan || '')}</pre>
+                </details>
+              </div>
+            </div>
+          `;
+        }
+
         $result.innerHTML = `
           <div class="panel">
             <header>Generated SQL</header>
             <pre class="sql">${escapeHtml(data.sql)}</pre>
           </div>
+          ${costPanel}
           <div class="panel">
             <header>Result · ${rows.length} row${rows.length === 1 ? '' : 's'}</header>
             ${table}
