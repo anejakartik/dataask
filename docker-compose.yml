@@ -9,4 +9,5 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - DATAASK_MODEL=${DATAASK_MODEL:-gpt-4o-mini}
       - DATAASK_CORS_ORIGINS=${DATAASK_CORS_ORIGINS:-*}
+      - DATAASK_USE_MOCK=${DATAASK_USE_MOCK:-0}
     restart: unless-stopped

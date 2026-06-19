@@ -15,6 +15,8 @@ import re
 
 from openai import OpenAI
 
+from mock_llm import mock_generate_sql
+
 log = logging.getLogger("dataask.llm")
 
 
@@ -43,6 +45,10 @@ class LLMUnavailable(RuntimeError):
 
 def generate_sql(question: str, schema_text: str, *, model: str | None = None) -> str:
     """Return a single SQL string. Raises LLMUnavailable on configuration / API issues."""
+    if os.environ.get("DATAASK_USE_MOCK", "").lower() in ("1", "true", "yes"):
+        log.info("dataask: DATAASK_USE_MOCK enabled — returning hand-written SQL")
+        return _strip_sql(mock_generate_sql(question))
+
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise LLMUnavailable(

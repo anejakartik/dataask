@@ -21,6 +21,14 @@ See [PRODUCT.md](./PRODUCT.md) for the full writeup. TL;DR:
 - **Pain:** Hex/Outerbase cost money; OSS text-to-SQL hallucinates non-existent columns; Slacking the data team is slow
 - **Why now:** NL→SQL is hot but accuracy is the blocker — an eval-driven approach wins
 
+## Demo
+
+![dataask — home with schema panel and example queries](./docs/screenshots/01-home.png)
+
+Pick an example or type your own question. dataask generates the SQL, runs DuckDB's `EXPLAIN` for a cost preview, executes against the in-memory dataset, and returns rows.
+
+![dataask — MRR by plan answer with generated SQL, EXPLAIN preview, and result table](./docs/screenshots/02-mrr-by-plan-result.png)
+
 ## What works today (alpha MVP)
 
 - **`POST /ask`** — schema introspection → OpenAI `gpt-4o-mini` → sqlglot AST safety check → DuckDB execute → rows back
@@ -35,10 +43,12 @@ See [PRODUCT.md](./PRODUCT.md) for the full writeup. TL;DR:
 ```bash
 git clone https://github.com/anejakartik/dataask.git
 cd dataask
-echo "OPENAI_API_KEY=sk-..." > .env
+echo "OPENAI_API_KEY=sk-..." > .env       # OR: echo "DATAASK_USE_MOCK=1" > .env
 docker compose up --build
 open http://localhost:8000  # ask "What was our MRR by plan last month?"
 ```
+
+No OpenAI key handy? Set `DATAASK_USE_MOCK=1` — the server returns hand-written SQL for the demo questions (used for the screenshots above; great for CI and sponsor demos).
 
 Sample questions the demo dataset can answer:
 
