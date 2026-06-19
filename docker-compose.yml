@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: server/Dockerfile
     ports:
-      - "8000:8000"
+      - "${DATAASK_PORT:-8000}:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - DATAASK_MODEL=${DATAASK_MODEL:-gpt-4o-mini}
